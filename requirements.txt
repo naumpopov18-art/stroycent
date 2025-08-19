@@ -1,0 +1,4 @@
+PySide6
+pyinstaller
+PyQt5
+PyQt5-tools
