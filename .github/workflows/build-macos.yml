@@ -29,7 +29,8 @@ jobs:
 
     - name: Build executable with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --add-data "building_data.json:." --add-data "styles/main.css:styles" main.py
+        pyinstaller --onefile --windowed --add-data=building_data.json:. --add-data=styles/main.css:styles main.py
+
 
 
 
