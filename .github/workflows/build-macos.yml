@@ -24,23 +24,78 @@ jobs:
         python -m pip install --upgrade pip
         pip install PySide6 pyinstaller
 
-    - name: Build with PyInstaller
+    - name: Build with PyInstaller (onefile)
       run: |
-        # Используем pyinstaller напрямую, а не через python -m
-        pyinstaller --clean --windowed --target-architecture universal2 --add-data="building_data.json:." --add-data="styles/main.css:styles" main.py
+        # Собираем в один файл с правильными путями
+        pyinstaller --clean --onefile --windowed --target-architecture universal2 \
+        --add-data="building_data.json:." \
+        --add-data="styles/main.css:styles" \
+        --name "StroyCent" \
+        main.py
 
-    - name: Remove macOS quarantine attribute from APP
+    - name: Create macOS app bundle structure
       run: |
-        # Удаляем карантин с всего .app bundle
-        xattr -dr com.apple.quarantine dist/main.app  || true
+        # Создаем правильную структуру .app для macOS
+        mkdir -p dist/StroyCent.app/Contents/MacOS
+        mkdir -p dist/StroyCent.app/Contents/Resources
+        
+        # Копируем исполняемый файл
+        mv dist/StroyCent dist/StroyCent.app/Contents/MacOS/
+        
+        # Копируем ресурсы в Resources
+        cp building_data.json dist/StroyCent.app/Contents/Resources/
+        mkdir -p dist/StroyCent.app/Contents/Resources/styles
+        cp styles/main.css dist/StroyCent.app/Contents/Resources/styles/
+        
+        # Создаем Info.plist для правильного отображения
+        cat > dist/StroyCent.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleName</key>
+            <string>StroyCent</string>
+            <key>CFBundleDisplayName</key>
+            <string>StroyCent</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.stroycent.app</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleExecutable</key>
+            <string>StroyCent</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.13</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>NSRequiresAquaSystemAppearance</key>
+            <false/>
+        </dict>
+        </plist>
+        EOF
+        
+        # Создаем PkgInfo
+        echo "APPL????" > dist/StroyCent.app/Contents/PkgInfo
 
-    - name: Verify app type
+    - name: Remove macOS quarantine attribute
       run: |
-        # Проверяем что создался именно .app bundle
-        file dist/main.app/Contents/MacOS/main
+        # Удаляем карантин со всего .app bundle
+        xattr -dr com.apple.quarantine dist/StroyCent.app || true
+
+    - name: Verify bundle structure
+      run: |
+        # Проверяем структуру приложения
+        find dist/StroyCent.app -type f
+        echo "=== Contents of Resources ==="
+        ls -la dist/StroyCent.app/Contents/Resources/
+        echo "=== Contents of MacOS ==="
+        ls -la dist/StroyCent.app/Contents/MacOS/
 
     - name: Upload macOS App Bundle
       uses: actions/upload-artifact@v4
       with:
         name: StroyCent-macOS-App
-        path: dist/main.app
+        path: dist/StroyCent.app
