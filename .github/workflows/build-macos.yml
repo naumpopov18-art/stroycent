@@ -24,75 +24,77 @@ jobs:
         python -m pip install --upgrade pip
         pip install PySide6 pyinstaller
 
-    - name: Build with PyInstaller (onefile)
+    - name: Build with PyInstaller
       run: |
-        # Собираем в один файл с правильными путями
+        # Собираем в ONEFILE - это важно!
         pyinstaller --clean --onefile --windowed --target-architecture universal2 \
         --add-data="building_data.json:." \
-        --add-data="styles/main.css:styles" \
+        --add-data="styles:styles" \
         --name "StroyCent" \
         main.py
 
-    - name: Create macOS app bundle structure
+    - name: Create proper app bundle
       run: |
-        # Создаем правильную структуру .app для macOS
+        # Создаем полную структуру .app
         mkdir -p dist/StroyCent.app/Contents/MacOS
         mkdir -p dist/StroyCent.app/Contents/Resources
         
         # Копируем исполняемый файл
         mv dist/StroyCent dist/StroyCent.app/Contents/MacOS/
         
-        # Копируем ресурсы в Resources
+        # Копируем ресурсы
         cp building_data.json dist/StroyCent.app/Contents/Resources/
-        mkdir -p dist/StroyCent.app/Contents/Resources/styles
-        cp styles/main.css dist/StroyCent.app/Contents/Resources/styles/
+        cp -r styles dist/StroyCent.app/Contents/Resources/
         
-        # Создаем Info.plist для правильного отображения
+        # СОЗДАЕМ ОБЯЗАТЕЛЬНЫЙ Info.plist
         cat > dist/StroyCent.app/Contents/Info.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
-            <key>CFBundleName</key>
-            <string>StroyCent</string>
-            <key>CFBundleDisplayName</key>
+            <key>CFBundleExecutable</key>
             <string>StroyCent</string>
             <key>CFBundleIdentifier</key>
             <string>com.stroycent.app</string>
+            <key>CFBundleName</key>
+            <string>StroyCent</string>
             <key>CFBundleVersion</key>
             <string>1.0</string>
             <key>CFBundleShortVersionString</key>
             <string>1.0</string>
-            <key>CFBundleExecutable</key>
-            <string>StroyCent</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>LSMinimumSystemVersion</key>
-            <string>10.13</string>
+            <string>10.15</string>
             <key>NSHighResolutionCapable</key>
             <true/>
-            <key>NSRequiresAquaSystemAppearance</key>
-            <false/>
         </dict>
         </plist>
         EOF
         
-        # Создаем PkgInfo
+        # СОЗДАЕМ ОБЯЗАТЕЛЬНЫЙ PkgInfo
         echo "APPL????" > dist/StroyCent.app/Contents/PkgInfo
+        
+        # Даем права на выполнение
+        chmod +x dist/StroyCent.app/Contents/MacOS/StroyCent
 
-    - name: Remove macOS quarantine attribute
+    - name: Ad-hoc code signing
       run: |
-        # Удаляем карантин со всего .app bundle
-        xattr -dr com.apple.quarantine dist/StroyCent.app || true
+        # БАЗОВАЯ ПОДПИСЬ (ad-hoc) - это ОБЯЗАТЕЛЬНО!
+        codesign --force --deep --sign - dist/StroyCent.app
 
-    - name: Verify bundle structure
+    - name: Remove quarantine attributes
       run: |
-        # Проверяем структуру приложения
+        xattr -dr com.apple.quarantine dist/StroyCent.app
+
+    - name: Verify bundle
+      run: |
+        # Проверяем структуру
         find dist/StroyCent.app -type f
-        echo "=== Contents of Resources ==="
-        ls -la dist/StroyCent.app/Contents/Resources/
-        echo "=== Contents of MacOS ==="
-        ls -la dist/StroyCent.app/Contents/MacOS/
+        echo "=== Проверка подписи ==="
+        codesign -dv --verbose=4 dist/StroyCent.app
+        echo "=== Проверка атрибутов ==="
+        xattr -l dist/StroyCent.app/Contents/MacOS/StroyCent
 
     - name: Upload macOS App Bundle
       uses: actions/upload-artifact@v4
