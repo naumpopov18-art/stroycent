@@ -33,54 +33,74 @@ jobs:
           --noconfirm \
           main.py
 
-    - name: Rename to .app and fix structure
+    - name: Fix bundle structure
       run: |
+        # Переименовываем папку в .app
         if [ -d "dist/StroyCent" ]; then
           mv dist/StroyCent dist/StroyCent.app
         fi
         
+        # Убеждаемся что структура правильная
         mkdir -p dist/StroyCent.app/Contents/Resources
         
+        # Копируем ресурсы в Resources (а не в корень!)
         cp building_data.json dist/StroyCent.app/Contents/Resources/ || true
         cp -r styles dist/StroyCent.app/Contents/Resources/ || true
         
-        # Создаем Info.plist
-    - name: Create Info.plist file
+        # Удаляем любые файлы из корня бандла (если есть)
+        find dist/StroyCent.app -maxdepth 1 -type f -delete
+        find dist/StroyCent.app -maxdepth 1 -type d ! -name "Contents" -exec rm -rf {} + 2>/dev/null || true
+
+    - name: Create Info.plist
       run: |
-        mkdir -p dist/StroyCent.app/Contents/
-        echo '<?xml version="1.0" encoding="UTF-8"?>
+        cat > dist/StroyCent.app/Contents/Info.plist << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
-          <dict>
+        <dict>
             <key>CFBundleExecutable</key>
-                <string>StroyCent</string>
-                <key>CFBundleIdentifier</key>
-                <string>com.stroycent.app</string>
-                <key>CFBundleName</key>
-                <string>StroyCent</string>
-                <key>CFBundleVersion</key>
-                <string>1.0</string>
-                <key>CFBundlePackageType</key>
-                <string>APPL</string>
-                <key>LSMinimumSystemVersion</key>
-                <string>10.15</string>
+            <string>StroyCent</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.stroycent.app</string>
+            <key>CFBundleName</key>
+            <string>StroyCent</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
             <key>NSHighResolutionCapable</key>
             <true/>
-          </dict>
-        </plist>' > dist/StroyCent.app/Contents/Info.plist
+        </dict>
+        </plist>
+        EOF
 
     - name: Verify bundle structure
       run: |
         echo "=== Структура .app ==="
         find dist/StroyCent.app -type f
+        echo "=== Содержимое корня ==="
+        ls -la dist/StroyCent.app/
+        echo "=== Содержимое Contents ==="
+        ls -la dist/StroyCent.app/Contents/
         echo "=== Содержимое Resources ==="
         ls -la dist/StroyCent.app/Contents/Resources/ || echo "Resources folder not found"
-        echo "=== Содержимое MacOS ==="
-        ls -la dist/StroyCent.app/Contents/MacOS/
+
+    - name: Clean bundle before signing
+      run: |
+        # Удаляем все лишние файлы из корня бандла
+        cd dist/StroyCent.app
+        find . -maxdepth 1 -type f -delete
+        find . -maxdepth 1 -type d ! -name "Contents" -exec rm -rf {} + 2>/dev/null || true
 
     - name: Ad-hoc code signing
       run: |
         codesign --force --deep --sign - dist/StroyCent.app
+
+    - name: Verify signature
+      run: |
+        codesign -dv --verbose=4 dist/StroyCent.app
 
     - name: Remove quarantine attributes
       run: |
