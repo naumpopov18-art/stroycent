@@ -26,13 +26,21 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        python -m PyInstaller --clean --windowed --target-architecture universal2 --add-data="building_data.json:." --add-data="styles/main.css:styles" main.py
-    - name: Remove macOS quarantine attribute
-      run: |
-        xattr -d com.apple.quarantine dist/main  || true
+        # Используем pyinstaller напрямую, а не через python -m
+        pyinstaller --clean --windowed --target-architecture universal2 --add-data="building_data.json:." --add-data="styles/main.css:styles" main.py
 
-    - name: Upload macOS executable
+    - name: Remove macOS quarantine attribute from APP
+      run: |
+        # Удаляем карантин с всего .app bundle
+        xattr -dr com.apple.quarantine dist/main.app  || true
+
+    - name: Verify app type
+      run: |
+        # Проверяем что создался именно .app bundle
+        file dist/main.app/Contents/MacOS/main
+
+    - name: Upload macOS App Bundle
       uses: actions/upload-artifact@v4
       with:
-        name: StroyCent
-        path: dist/main
+        name: StroyCent-macOS-App
+        path: dist/main.app
