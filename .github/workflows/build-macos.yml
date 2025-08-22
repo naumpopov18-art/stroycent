@@ -45,28 +45,29 @@ jobs:
         cp -r styles dist/StroyCent.app/Contents/Resources/ || true
         
         # Создаем Info.plist
-        cat > dist/StroyCent.app/Contents/Info.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>StroyCent</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.stroycent.app</string>
-    <key>CFBundleName</key>
-    <string>StroyCent</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.15</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
+    - name: Create Info.plist file
+      run: |
+        mkdir -p dist/StroyCent.app/Contents/
+        echo '<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+                <string>StroyCent</string>
+                <key>CFBundleIdentifier</key>
+                <string>com.stroycent.app</string>
+                <key>CFBundleName</key>
+                <string>StroyCent</string>
+                <key>CFBundleVersion</key>
+                <string>1.0</string>
+                <key>CFBundlePackageType</key>
+                <string>APPL</string>
+                <key>LSMinimumSystemVersion</key>
+                <string>10.15</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+        </plist>' > dist/StroyCent.app/Contents/Info.plist
 
     - name: Verify bundle structure
       run: |
