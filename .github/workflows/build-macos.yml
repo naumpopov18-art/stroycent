@@ -33,26 +33,46 @@ jobs:
           --noconfirm \
           main.py
 
+    - name: Check what PyInstaller created
+      run: |
+        echo "=== Содержимое dist/ ==="
+        ls -la dist/
+        echo "=== Структура созданного бандла ==="
+        if [ -d "dist/StroyCent.app" ]; then
+          find dist/StroyCent.app -type f
+        elif [ -d "dist/StroyCent" ]; then
+          find dist/StroyCent -type f
+        else
+          echo "Бандл не найден!"
+          exit 1
+        fi
+
     - name: Fix bundle structure
       run: |
-        # Переименовываем папку в .app
+        # Проверяем что создал PyInstaller и исправляем структуру
         if [ -d "dist/StroyCent" ]; then
+          echo "PyInstaller создал папку StroyCent - переименовываем в .app"
           mv dist/StroyCent dist/StroyCent.app
         fi
         
-        # Убеждаемся что структура правильная
+        # Создаем необходимые папки если их нет
+        mkdir -p dist/StroyCent.app/Contents/MacOS
         mkdir -p dist/StroyCent.app/Contents/Resources
         
-        # Копируем ресурсы в Resources (а не в корень!)
+        # Если PyInstaller создал файлы в неправильных местах, перемещаем их
+        if [ -f "dist/StroyCent.app/StroyCent" ]; then
+          mv dist/StroyCent.app/StroyCent dist/StroyCent.app/Contents/MacOS/
+        fi
+        
+        # Копируем ресурсы
         cp building_data.json dist/StroyCent.app/Contents/Resources/ || true
         cp -r styles dist/StroyCent.app/Contents/Resources/ || true
-        
-        # Удаляем любые файлы из корня бандла (если есть)
-        find dist/StroyCent.app -maxdepth 1 -type f -delete
-        find dist/StroyCent.app -maxdepth 1 -type d ! -name "Contents" -exec rm -rf {} + 2>/dev/null || true
 
     - name: Create Info.plist
       run: |
+        # Сначала убедимся что папка существует
+        mkdir -p dist/StroyCent.app/Contents/
+        
         cat > dist/StroyCent.app/Contents/Info.plist << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -76,16 +96,19 @@ jobs:
         </plist>
         EOF
 
-    - name: Verify bundle structure
+    - name: Verify final structure
       run: |
-        echo "=== Структура .app ==="
-        find dist/StroyCent.app -type f
-        echo "=== Содержимое корня ==="
-        ls -la dist/StroyCent.app/
-        echo "=== Содержимое Contents ==="
-        ls -la dist/StroyCent.app/Contents/
-        echo "=== Содержимое Resources ==="
-        ls -la dist/StroyCent.app/Contents/Resources/ || echo "Resources folder not found"
+        echo "=== Финальная структура ==="
+        tree dist/StroyCent.app || find dist/StroyCent.app -type f
+        
+        echo "=== Проверка исполняемого файла ==="
+        if [ -f "dist/StroyCent.app/Contents/MacOS/StroyCent" ]; then
+          echo "✅ Исполняемый файл на месте"
+          chmod +x dist/StroyCent.app/Contents/MacOS/StroyCent
+        else
+          echo "❌ Исполняемый файл не найден!"
+          exit 1
+        fi
 
     - name: Clean bundle before signing
       run: |
