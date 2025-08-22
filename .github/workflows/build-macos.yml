@@ -26,8 +26,7 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        python -m PyInstaller --clean --onefile --windowed --target-architecture universal2 --add-data="building_data.json:." --add-data="styles/main.css:styles" main.py
-
+        python -m PyInstaller --clean --windowed --target-architecture universal2 --add-data="building_data.json:." --add-data="styles/main.css:styles" main.py
     - name: Remove macOS quarantine attribute
       run: |
         xattr -d com.apple.quarantine dist/main  || true
