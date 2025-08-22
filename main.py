@@ -23,26 +23,40 @@ def resource_path(relative_path):
 def load_stylesheet():
     """Загрузка стилей с учетом разных режимов запуска"""
     try:
+        # Определяем базовый путь в зависимости от режима
+        if getattr(sys, 'frozen', False):
+            # Режим собранного приложения
+            if hasattr(sys, '_MEIPASS'):
+                # .app bundle режим
+                base_path = sys._MEIPASS
+            else:
+                # onefile режим
+                base_path = os.path.dirname(sys.executable)
+        else:
+            # Режим разработки
+            base_path = os.path.dirname(__file__)
+        
         # Пробуем несколько возможных путей
         possible_paths = [
-            resource_path("styles/main.css"),  # Для PyInstaller .app
-            os.path.join(os.path.dirname(__file__), "styles", "main.css"),  # Для разработки
-            os.path.join(os.path.dirname(sys.executable), "styles", "main.css"),  # Для onefile
-            "styles/main.css"  # Относительный путь
+            os.path.join(base_path, "styles", "main.css"),
+            os.path.join(base_path, "..", "Resources", "styles", "main.css"),
+            os.path.join(base_path, "Resources", "styles", "main.css"),
+            "styles/main.css"
         ]
         
         for css_path in possible_paths:
             if os.path.exists(css_path):
+                print(f"[DEBUG] Найден файл стилей: {css_path}")
                 with open(css_path, "r", encoding="utf-8") as f:
                     return f.read()
         
-        print("Файл стилей не найден ни по одному из путей:")
+        print("[DEBUG] Файл стилей не найден ни по одному из путей:")
         for path in possible_paths:
             print(f"  - {path}")
         return ""
         
     except Exception as e:
-        print(f"Ошибка загрузки стилей: {e}")
+        print(f"[DEBUG] Ошибка загрузки стилей: {e}")
         return ""
 
 if __name__ == "__main__":
