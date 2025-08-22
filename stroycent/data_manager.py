@@ -11,13 +11,22 @@ DEFAULT_STATUSES = {
 }
 
 def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
-    except AttributeError:
+    except Exception:
         base_path = os.path.abspath(".")
+    
+    # Для .app структуры ищем в Resources
+    resources_path = os.path.join(base_path, '..', 'Resources')
+    if os.path.exists(os.path.join(resources_path, relative_path)):
+        return os.path.join(resources_path, relative_path)
+    
     return os.path.join(base_path, relative_path)
 
 def get_data_file_path():
+    """Путь к файлу данных (всегда рядом с исполняемым файлом)"""
     if getattr(sys, 'frozen', False):
         base_path = os.path.dirname(sys.executable)
     else:
@@ -25,6 +34,7 @@ def get_data_file_path():
     return os.path.join(base_path, "building_data.json")
 
 def get_log_file_path():
+    """Путь к файлу логов (всегда рядом с исполняемым файлом)"""
     if getattr(sys, 'frozen', False):
         base_path = os.path.dirname(sys.executable)
     else:
@@ -32,28 +42,59 @@ def get_log_file_path():
     return os.path.join(base_path, "error_log.txt")
 
 def ensure_data_file_exists():
+    """Создает файл данных если его нет, копируя из ресурсов"""
     target_path = get_data_file_path()
     if not os.path.exists(target_path):
         try:
-            source_path = get_resource_path("building_data.json")
-            shutil.copyfile(source_path, target_path)
+            # Пробуем несколько возможных путей к исходному файлу
+            possible_sources = [
+                get_resource_path("building_data.json"),  # Для PyInstaller .app
+                os.path.join(os.path.dirname(__file__), "building_data.json"),  # Для разработки
+                "building_data.json"  # Относительный путь
+            ]
+            
+            for source_path in possible_sources:
+                if os.path.exists(source_path):
+                    shutil.copyfile(source_path, target_path)
+                    print(f"Файл данных скопирован из: {source_path}")
+                    return
+            
+            # Если файл не найден нигде, создаем пустой
+            print("Исходный файл данных не найден, создаем новый")
+            initial_data = {"floors": {}, "statuses": DEFAULT_STATUSES}
+            with open(target_path, "w", encoding="utf-8") as f:
+                json.dump(initial_data, f, indent=4, ensure_ascii=False)
+                
         except Exception as e:
-            print(f"Ошибка копирования building_data.json: {e}")
+            print(f"Ошибка создания building_data.json: {e}")
+            # Создаем минимальный файл данных
+            initial_data = {"floors": {}, "statuses": DEFAULT_STATUSES}
+            with open(target_path, "w", encoding="utf-8") as f:
+                json.dump(initial_data, f, indent=4, ensure_ascii=False)
 
 def load_data():
-    if os.path.exists(get_data_file_path()):
+    """Загрузка данных из файла"""
+    data_file = get_data_file_path()
+    if os.path.exists(data_file):
         try:
-            with open(get_data_file_path(), "r", encoding="utf-8") as f:
+            with open(data_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                # Ensure statuses exist
                 if 'statuses' not in data:
-                    data['statuses'] = DEFAULT_STATUSES
+                    data['statuses'] = DEFAULT_STATUSES.copy()
+                # Ensure all default statuses exist
+                for status, colors in DEFAULT_STATUSES.items():
+                    if status not in data['statuses']:
+                        data['statuses'][status] = colors
                 return data
-        except Exception:
-            return {"floors": {}, "statuses": DEFAULT_STATUSES}
+        except Exception as e:
+            print(f"Ошибка загрузки данных: {e}")
+            return {"floors": {}, "statuses": DEFAULT_STATUSES.copy()}
     else:
-        return {"floors": {}, "statuses": DEFAULT_STATUSES}
+        return {"floors": {}, "statuses": DEFAULT_STATUSES.copy()}
 
 def save_data(data):
+    """Сохранение данных в файл"""
     try:
         with open(get_data_file_path(), "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
