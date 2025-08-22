@@ -26,57 +26,50 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        # Собираем как .app BUNDLE (без --onefile!)
         pyinstaller --clean --windowed --target-architecture universal2 \
-        --add-data="building_data.json:." \
-        --add-data="styles:styles" \
-        --name "StroyCent" \
-        --noconfirm \
-        main.py
+          --add-data="building_data.json:." \
+          --add-data="styles:styles" \
+          --name "StroyCent" \
+          --noconfirm \
+          main.py
 
     - name: Rename to .app and fix structure
       run: |
-        # PyInstaller создает папку StroyCent, переименовываем в .app
         if [ -d "dist/StroyCent" ]; then
-            mv dist/StroyCent dist/StroyCent.app
+          mv dist/StroyCent dist/StroyCent.app
         fi
         
-        # Проверяем и создаем недостающие папки
         mkdir -p dist/StroyCent.app/Contents/Resources
         
-        # Копируем ресурсы в правильные папки
         cp building_data.json dist/StroyCent.app/Contents/Resources/ || true
         cp -r styles dist/StroyCent.app/Contents/Resources/ || true
         
-        # Создаем обязательный Info.plist если его нет
-        if [ ! -f "dist/StroyCent.app/Contents/Info.plist" ]; then
-            cat > dist/StroyCent.app/Contents/Info.plist << 'EOF'
+        # Создаем Info.plist с правильным форматированием
+        cat > dist/StroyCent.app/Contents/Info.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleExecutable</key>
-    <string>StroyCent</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.stroycent.app</string>
-    <key>CFBundleName</key>
-    <string>StroyCent</string>
-    <key>CFBundleVersion</key>
-    <string>1.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.15</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
+  <key>CFBundleExecutable</key>
+  <string>StroyCent</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.stroycent.app</string>
+  <key>CFBundleName</key>
+  <string>StroyCent</string>
+  <key>CFBundleVersion</key>
+  <string>1.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>10.15</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
 </dict>
 </plist>
 EOF
-        fi
 
     - name: Verify bundle structure
       run: |
-        # Проверяем что создалось
         echo "=== Структура .app ==="
         find dist/StroyCent.app -type f
         echo "=== Содержимое Resources ==="
@@ -86,7 +79,6 @@ EOF
 
     - name: Ad-hoc code signing
       run: |
-        # Подписываем приложение
         codesign --force --deep --sign - dist/StroyCent.app
 
     - name: Remove quarantine attributes
